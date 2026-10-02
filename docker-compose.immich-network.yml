@@ -1,10 +1,9 @@
+# Compatibility override: the main Compose file already joins this network.
 services:
-  immich-person-review:
+  immich-person-manager:
     networks:
-      - default
       - immich
-
 networks:
   immich:
     external: true
-    name: "${IMMICH_DOCKER_NETWORK:-immich_default}"
+    name: "${IMMICH_NETWORK:-immich_default}"

@@ -9,7 +9,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, 'public');
 const packageInfo = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
 const appVersion = packageInfo.version || 'unknown';
-const port = Number(process.env.PORT || 3000);
+const port = Number(process.env.PORT || 3003);
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  console.error('PORT must be an integer between 1 and 65535.');
+  process.exit(1);
+}
 const immichUrl = (process.env.IMMICH_URL || '').replace(/\/$/, '');
 const immichExternalUrl = (process.env.IMMICH_EXTERNAL_URL || immichUrl).replace(/\/$/, '');
 const apiPrefixRaw = process.env.IMMICH_API_PREFIX ?? '/api';
@@ -56,7 +60,7 @@ const vectorPool = vectorDbConfigured
             database: immichDbName,
           }),
       ssl: immichDbSsl ? { rejectUnauthorized: false } : undefined,
-      application_name: 'immich-person-review-vector-cluster',
+      application_name: 'immich-person-manager-vector-cluster',
       max: 3,
       connectionTimeoutMillis: 8000,
       idleTimeoutMillis: 30000,
@@ -1046,10 +1050,13 @@ function serveStatic(req, res, url) {
 
 http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  if (req.method === 'GET' && url.pathname === '/healthz') {
+    return json(res, 200, { ok: true, app: packageInfo.name, version: appVersion });
+  }
   if (url.pathname.startsWith('/review-api/')) return handleApi(req, res, url);
   return serveStatic(req, res, url);
 }).listen(port, '0.0.0.0', () => {
-  console.log(`Immich Person Review v${appVersion}`);
+  console.log(`Immich Person Manager v${appVersion}`);
   console.log(`Listening on :${port}`);
   console.log(`Immich API endpoint: ${immichUrl}${apiPrefix}`);
   console.log(`Immich external URL: ${immichExternalUrl || 'not configured'}`);
