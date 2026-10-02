@@ -1,18 +1,35 @@
 services:
-  immich-person-review:
-    build: .
-    image: immich-person-review:0.13.0
-    container_name: immich-person-review
+  immich-person-manager:
+    container_name: immich-person-manager
+    image: "ghcr.io/shurli/immich-person-manager:${IMAGE_TAG:-latest}"
     restart: unless-stopped
     ports:
-      - "3030:3000"
-    env_file:
-      - .env
-    environment:
-      PORT: "3000"
+      - "${PORT:-3003}:${PORT:-3003}"
     networks:
       - immich
+    environment:
+      PORT: "${PORT:-3003}"
+      IMMICH_URL: "${IMMICH_URL:-http://immich_server:2283}"
+      IMMICH_EXTERNAL_URL: "${IMMICH_EXTERNAL_URL:-}"
+      IMMICH_API_PREFIX: "${IMMICH_API_PREFIX-/api}"
+      IMMICH_API_KEY: "${IMMICH_API_KEY:?Set IMMICH_API_KEY in .env}"
+
+      # Optional: read-only PostgreSQL access for face vector clusters.
+      # Existing DB_* variables remain supported as fallbacks.
+      IMMICH_DB_URL: "${IMMICH_DB_URL:-}"
+      IMMICH_DB_HOST: "${IMMICH_DB_HOST:-${DB_HOSTNAME:-}}"
+      IMMICH_DB_PORT: "${IMMICH_DB_PORT:-${DB_PORT:-5432}}"
+      IMMICH_DB_USER: "${IMMICH_DB_USER:-${DB_USERNAME:-immich_person_manager}}"
+      IMMICH_DB_PASSWORD: "${IMMICH_DB_PASSWORD-${DB_PASSWORD:-}}"
+      IMMICH_DB_NAME: "${IMMICH_DB_NAME:-${DB_DATABASE_NAME:-immich}}"
+      IMMICH_DB_SSL: "${IMMICH_DB_SSL:-false}"
+
+      VECTOR_CLUSTER_DEFAULT_RADIUS: "${VECTOR_CLUSTER_DEFAULT_RADIUS:-}"
+      VECTOR_CLUSTER_MAX_FACES: "${VECTOR_CLUSTER_MAX_FACES:-30000}"
+      VECTOR_CLUSTER_MAX_ADJACENT_PEOPLE: "${VECTOR_CLUSTER_MAX_ADJACENT_PEOPLE:-50}"
+      VECTOR_CLUSTER_ADJACENT_CANDIDATE_POOL: "${VECTOR_CLUSTER_ADJACENT_CANDIDATE_POOL:-500}"
+
 networks:
   immich:
     external: true
-    name: ${IMMICH_NETWORK:-immich_default}
+    name: "${IMMICH_NETWORK:-immich_default}"

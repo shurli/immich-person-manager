@@ -1,0 +1,6 @@
+# Optional local build; the default Compose file only pulls the GHCR image.
+# docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  immich-person-manager:
+    build: .
+    image: immich-person-manager:local

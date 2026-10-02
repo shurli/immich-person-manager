@@ -44,8 +44,12 @@ test('person HTTP routes remain usable and former tag API is removed', async (t)
     child.once('error', reject);
   });
   const base = `http://127.0.0.1:${port}`;
+  const health = await (await fetch(base + '/healthz')).json();
+  assert.equal(health.ok, true);
+  assert.equal(health.app, 'immich-person-manager');
+  assert.equal(seen.length, 0, 'healthcheck must not contact Immich');
   const status = await (await fetch(base + '/review-api/status')).json();
-  assert.equal(status.ok, true); assert.equal(status.version, '0.13.0');
+  assert.equal(status.ok, true); assert.equal(status.version, JSON.parse(fs.readFileSync(new URL('package.json', import.meta.url), 'utf8')).version);
   assert.equal(status.immichExternalUrl, 'https://photos.example.test');
   assert.equal(status.vectorDatabase.configured, false);
   const people = await (await fetch(base + '/review-api/people')).json();
