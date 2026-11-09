@@ -18,7 +18,13 @@ test('package, lockfile, UI and Docker defaults use the manager identity', () =>
   assert.equal(lock.packages[''].name, pkg.name);
   assert.equal(lock.version, pkg.version);
   assert.equal(lock.packages[''].version, pkg.version);
-  assert.match(read('public/index.html'), /Immich Person Manager/);
+  const html = read('public/index.html');
+  const app = read('public/app.js');
+  assert.match(html, /<title>immich-person-manager<\/title>/);
+  assert.match(html, /<strong>immich-person-manager<\/strong>/);
+  assert.doesNotMatch(html, /Immich Person (?:Review|Manager)/);
+  assert.match(app, /all\.sort\(comparePeopleKnownFirst\)/);
+  assert.match(app, /requestAnimationFrame\(\(\) => \$\('#mergeTargetSearch'\)\.focus\(\)\)/);
   assert.match(read('Dockerfile'), /ENV NODE_ENV=production PORT=3003/);
   assert.match(read('Dockerfile'), /EXPOSE 3003/);
   for (const file of ['server.mjs', 'public/index.html', 'Dockerfile', 'docker-compose.yml', 'docker-compose.immich-network.yml']) {
@@ -50,7 +56,8 @@ test('default port is 3003 and health does not need an upstream connection', asy
   assert.deepEqual(health, { ok: true, app: pkg.name, version: pkg.version });
   assert.ok(!JSON.stringify(health).includes('health-test-secret'));
   const html = await (await fetch('http://127.0.0.1:3003/')).text();
-  assert.match(html, /Immich Person Manager/);
+  assert.match(html, /immich-person-manager/);
+  assert.doesNotMatch(html, /Person Review|Immich Person Manager/);
 });
 test('invalid ports fail with a clear configuration error', () => {
   for (const port of ['0', '-1', '65536', '1.5', 'not-a-port']) {
