@@ -26,7 +26,7 @@ test('package, lockfile, UI and Docker defaults use the manager identity', () =>
   assert.match(app, /all\.sort\(comparePeopleKnownFirst\)/);
   assert.match(app, /requestAnimationFrame\(\(\) => \$\('#mergeTargetSearch'\)\.focus\(\)\)/);
   assert.match(app, /Verbunden · immich-person-manager/);
-  assert.doesNotMatch(app, /Verbunden · \\${s\\.keyName}/);
+  assert.doesNotMatch(app, /s\\.keyName/);
   assert.match(read('server.mjs'), /detectAssetFacePersonColumn/);
   assert.match(read('Dockerfile'), /asset-face-schema\\.mjs/);
   assert.match(read('Dockerfile'), /ENV NODE_ENV=production PORT=3003/);
