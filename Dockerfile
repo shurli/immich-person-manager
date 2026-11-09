@@ -5,7 +5,7 @@ LABEL org.opencontainers.image.title="immich-person-manager" \
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund --ignore-scripts
-COPY --chown=node:node server.mjs cluster-math.mjs ./
+COPY --chown=node:node server.mjs cluster-math.mjs asset-face-schema.mjs ./
 COPY --chown=node:node public ./public
 ENV NODE_ENV=production PORT=3003
 USER node
