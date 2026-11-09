@@ -1,5 +1,5 @@
 FROM node:22-alpine
-LABEL org.opencontainers.image.title="Immich Person Manager" \
+LABEL org.opencontainers.image.title="immich-person-manager" \
       org.opencontainers.image.description="Review and manage Immich people and face assignments" \
       org.opencontainers.image.source="https://github.com/shurli/immich-person-manager"
 WORKDIR /app
