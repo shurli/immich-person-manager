@@ -8,6 +8,7 @@ import {
   filterAndSortClusterPoints,
   isClusterListMode,
 } from './cluster-list-mode.js';
+import { comparePeopleKnownFirst } from './person-order.js';
 
 const $ = (s) => document.querySelector(s);
 const PAGE_SIZE = 40;
@@ -190,7 +191,7 @@ async function loadPeople() {
       if (!d.hasNextPage) break;
       page++;
     }
-    state.people = all.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+    state.people = all.sort(comparePeopleKnownFirst);
     renderPeople(state.people);
     if ($('#unnamedTab')?.classList.contains('active')) renderUnnamedPeople();
   } catch (e) {
@@ -286,6 +287,7 @@ function openMergeDialog(sourceId) {
   $('#mergeTargetSearch').value = '';
   renderMergeTargets(state.people.filter((p) => p.id !== sourceId && !p.isHidden).slice(0, 60));
   $('#mergeDialog').showModal();
+  requestAnimationFrame(() => $('#mergeTargetSearch').focus());
 }
 
 function renderMergeTargets(people) {
@@ -827,7 +829,7 @@ async function reloadTimelineView() {
 }
 
 function clusterSetupMessage() {
-  return `Für die Vektoransicht braucht die App zusätzlich einen lesenden PostgreSQL-Zugriff auf die Immich-Datenbank.\n\nBeispiel für .env:\nIMMICH_DB_HOST=database\nIMMICH_DB_PORT=5432\nIMMICH_DB_USER=immich_person_review\nIMMICH_DB_PASSWORD=…\nIMMICH_DB_NAME=immich\n\nDer App-Container muss außerdem im selben Docker-Netz wie Immich/PostgreSQL liegen.`;
+  return `Für die Vektoransicht braucht die App zusätzlich einen lesenden PostgreSQL-Zugriff auf die Immich-Datenbank.\n\nBeispiel für .env:\nIMMICH_DB_HOST=database\nIMMICH_DB_PORT=5432\nIMMICH_DB_USER=immich_person_manager\nIMMICH_DB_PASSWORD=…\nIMMICH_DB_NAME=immich\n\nDer App-Container muss außerdem im selben Docker-Netz wie Immich/PostgreSQL liegen.`;
 }
 
 function showClusterError(message) {
@@ -878,8 +880,8 @@ function initializeClusterNeighborPreferences() {
   const configuredMax = Number(state.vectorDatabase?.maxAdjacentPeople || 50);
   state.clusterNeighborMax = Number.isFinite(configuredMax) ? Math.max(1, Math.floor(configuredMax)) : 50;
   try {
-    state.clusterNeighborsEnabled = localStorage.getItem('immich-review.cluster-neighbors.enabled') === 'true';
-    const storedCount = Number(localStorage.getItem('immich-review.cluster-neighbors.count'));
+    state.clusterNeighborsEnabled = localStorage.getItem('immich-person-manager.cluster-neighbors.enabled') === 'true';
+    const storedCount = Number(localStorage.getItem('immich-person-manager.cluster-neighbors.count'));
     if (Number.isFinite(storedCount)) state.clusterNeighborCount = storedCount;
   } catch {}
   state.clusterNeighborCount = Math.min(state.clusterNeighborMax, Math.max(1, Math.floor(state.clusterNeighborCount || 8)));
@@ -931,7 +933,7 @@ function setClusterNeighborsEnabled(enabled) {
   state.clusterNeighborsEnabled = Boolean(enabled);
   state.clusterNeighborError = '';
   if (!state.clusterNeighborsEnabled) state.clusterNeighborRequestToken++;
-  try { localStorage.setItem('immich-review.cluster-neighbors.enabled', String(state.clusterNeighborsEnabled)); } catch {}
+  try { localStorage.setItem('immich-person-manager.cluster-neighbors.enabled', String(state.clusterNeighborsEnabled)); } catch {}
   updateClusterNeighborUi();
   if (state.clusterNeighborsEnabled && state.cluster) loadClusterNeighbors();
   else {
@@ -945,7 +947,7 @@ function setClusterNeighborCount(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return;
   state.clusterNeighborCount = Math.min(state.clusterNeighborMax, Math.max(1, Math.floor(numeric)));
-  try { localStorage.setItem('immich-review.cluster-neighbors.count', String(state.clusterNeighborCount)); } catch {}
+  try { localStorage.setItem('immich-person-manager.cluster-neighbors.count', String(state.clusterNeighborCount)); } catch {}
   updateClusterNeighborUi();
   if (!state.clusterNeighborsEnabled || !state.cluster) return;
   if (state.clusterNeighborLoadedFor !== state.person?.id || state.clusterNeighborQueryLimit < state.clusterNeighborCount) {
@@ -1990,6 +1992,7 @@ $('#createPersonBtn').onclick = async () => {
   try {
     const p = await api('/review-api/people', { method: 'POST', body: JSON.stringify({ name, birthDate: $('#newPersonBirthDate').value || null }) });
     state.people.push(p);
+    state.people.sort(comparePeopleKnownFirst);
     await reassign(p.id);
     $('#newPersonName').value = '';
     $('#newPersonBirthDate').value = '';
