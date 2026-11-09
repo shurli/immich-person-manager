@@ -358,7 +358,7 @@ async function unassignFacesWithTemporaryPerson(items) {
     const create = await immichFetch('/people', {
       method: 'POST',
       body: JSON.stringify({
-        name: `__immich_review_cluster_unassign_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+        name: `__immich_person_manager_cluster_unassign_${Date.now()}_${Math.random().toString(16).slice(2)}`,
         birthDate: null,
         isHidden: true,
         isFavorite: false,
@@ -960,7 +960,7 @@ async function handleApi(req, res, url) {
         const create = await immichFetch('/people', {
           method: 'POST',
           body: JSON.stringify({
-            name: `__immich_review_unassign_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+            name: `__immich_person_manager_unassign_${Date.now()}_${Math.random().toString(16).slice(2)}`,
             birthDate: null,
             isHidden: true,
             isFavorite: false,
@@ -1056,7 +1056,7 @@ http.createServer((req, res) => {
   if (url.pathname.startsWith('/review-api/')) return handleApi(req, res, url);
   return serveStatic(req, res, url);
 }).listen(port, '0.0.0.0', () => {
-  console.log(`Immich Person Manager v${appVersion}`);
+  console.log(`immich-person-manager v${appVersion}`);
   console.log(`Listening on :${port}`);
   console.log(`Immich API endpoint: ${immichUrl}${apiPrefix}`);
   console.log(`Immich external URL: ${immichExternalUrl || 'not configured'}`);
