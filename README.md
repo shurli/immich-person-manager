@@ -1,11 +1,17 @@
-# Immich Person Manager
+# immich-person-manager
 
 Eigenständige Docker-Web-App zum Prüfen und Korrigieren von Immich-Personenzuordnungen.
 
-## Version 0.14.0
+## Version 0.14.1
 
-Umbenannt von **Immich Person Review** zu **Immich Person Manager**. Die
-Standardinstallation nutzt jetzt `ghcr.io/shurli/immich-person-manager:latest`
+- sichtbare App-Bezeichnung konsequent `immich-person-manager`,
+- benannte/bekannte Personen stehen in der Auswahl vor unbenannten Personen,
+- beim Öffnen des Zusammenführen-Dialogs liegt der Cursor sofort im Suchfeld.
+
+### Version 0.14.0
+
+Umbenannt von **Immich Person Review** zu `immich-person-manager`. Die
+Standardinstallation nutzt `ghcr.io/shurli/immich-person-manager:latest`
 mit konfigurierbarem Port (Standard **3003**), wie beim Tag Manager.
 Bestehende Installationen: zuerst die Hinweise in `MIGRATION.md` beachten.
 
