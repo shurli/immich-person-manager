@@ -1,12 +1,12 @@
 {
   "name": "immich-person-manager",
-  "version": "0.14.1",
+  "version": "0.14.2",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test",
-    "check": "node --check server.mjs && node --check public/app.js",
+    "check": "node --check server.mjs && node --check public/app.js && node --check asset-face-schema.mjs",
     "check:compose": "node scripts/check-compose.mjs"
   },
   "dependencies": {

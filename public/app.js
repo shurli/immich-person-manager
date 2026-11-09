@@ -169,7 +169,7 @@ async function init() {
         : state.vectorDatabase.schemaReady === false
           ? `Tabellen oder SELECT-Rechte fehlen: ${state.vectorDatabase.schemaError || 'unbekannter Fehler'}`
           : `PostgreSQL erreichbar${state.vectorDatabase.database ? ` · DB ${state.vectorDatabase.database}` : ''}${state.vectorDatabase.user ? ` · Benutzer ${state.vectorDatabase.user}` : ''}`;
-    $('#status').textContent = `Verbunden · ${s.keyName}`;
+    $('#status').textContent = 'Verbunden · immich-person-manager';
     $('#status').className = 'status ok';
   } catch (e) {
     $('#status').textContent = 'Immich nicht erreichbar';
