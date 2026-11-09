@@ -26,7 +26,7 @@ for mode in default custom; do
   curl --silent --show-error --fail --retry 15 --retry-delay 1 \
     --retry-all-errors --retry-max-time 30 --max-time 3 "$base/healthz" \
     | node -e "let s=''; for await (const c of process.stdin) s+=c; const h=JSON.parse(s); if (!h.ok || h.app!=='immich-person-manager') process.exit(1)" --input-type=module
-  curl --silent --show-error --fail "$base/" | grep 'Immich Person Manager' >/dev/null
+  curl --silent --show-error --fail "$base/" | grep 'immich-person-manager' >/dev/null
   test "$(docker exec "$container" id -u)" = 1000
   healthy=false
   for attempt in $(seq 1 30); do
