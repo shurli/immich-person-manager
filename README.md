@@ -2,6 +2,13 @@
 
 Eigenständige Docker-Web-App zum Prüfen und Korrigieren von Immich-Personenzuordnungen.
 
+## Version 0.14.2
+
+- erkennt automatisch, ob Immich in `asset_face` die aktuelle Spalte `personGroupId` oder die ältere Spalte `personId` verwendet,
+- Vektor-Cluster, Nachbarpersonen und Cluster-Zuordnungsprüfungen verwenden automatisch die erkannte Spalte,
+- rechts oben steht fest `Verbunden · immich-person-manager` statt des Namens des Immich-API-Keys,
+- keine Änderung am Immich-Datenbankschema nötig; die App bleibt bei PostgreSQL-Lesezugriff.
+
 ## Version 0.14.1
 
 - sichtbare App-Bezeichnung konsequent `immich-person-manager`,
