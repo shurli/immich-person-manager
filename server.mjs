@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
 import { buildVectorCluster, projectEmbeddingToCluster } from './cluster-math.mjs';
+import { ASSET_FACE_PERSON_COLUMNS, assetFacePersonReference, selectAssetFacePersonColumn } from './asset-face-schema.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, 'public');
@@ -70,6 +71,33 @@ const vectorPool = vectorDbConfigured
 
 vectorPool?.on('error', (error) => console.error('Immich PostgreSQL pool error:', error));
 
+let assetFacePersonColumnPromise = null;
+
+async function detectAssetFacePersonColumn() {
+  const pool = requireVectorDatabase();
+  if (!assetFacePersonColumnPromise) {
+    assetFacePersonColumnPromise = pool.query(
+      `SELECT attname AS "columnName"
+         FROM pg_attribute
+        WHERE attrelid = to_regclass('asset_face')
+          AND attname = ANY($1::text[])
+          AND attnum > 0
+          AND NOT attisdropped`,
+      [ASSET_FACE_PERSON_COLUMNS],
+    )
+      .then((result) => selectAssetFacePersonColumn(result.rows.map((row) => row.columnName)))
+      .catch((error) => {
+        assetFacePersonColumnPromise = null;
+        throw error;
+      });
+  }
+  return assetFacePersonColumnPromise;
+}
+
+async function assetFacePersonRef(alias = 'af') {
+  return assetFacePersonReference(await detectAssetFacePersonColumn(), alias);
+}
+
 if (!immichUrl || !apiKey) {
   console.error('IMMICH_URL and IMMICH_API_KEY are required.');
   process.exit(1);
@@ -104,13 +132,16 @@ async function vectorDatabaseInfo({ probe = false } = {}) {
     info.database = result.rows[0]?.database || info.database;
     info.user = result.rows[0]?.user || null;
     try {
+      const personColumn = await detectAssetFacePersonColumn();
+      const personRef = assetFacePersonReference(personColumn);
       await vectorPool.query(
-        `SELECT af.id, af."assetId", af."personId", fs.embedding::text, a."originalFileName"
+        `SELECT af.id, af."assetId", ${personRef} AS "personId", fs.embedding::text, a."originalFileName"
            FROM asset_face af
            LEFT JOIN face_search fs ON fs."faceId" = af.id
            JOIN asset a ON a.id = af."assetId"
           LIMIT 0`,
       );
+      info.assetFacePersonColumn = personColumn;
       info.schemaReady = true;
     } catch (schemaError) {
       info.schemaReady = false;
@@ -150,11 +181,12 @@ async function verifyPersonAccess(personId) {
 
 async function loadPersonVectorRows(personId) {
   const pool = requireVectorDatabase();
+  const personRef = await assetFacePersonRef();
   const countResult = await pool.query(
     `SELECT count(*)::int AS count
        FROM asset_face af
        JOIN asset a ON a.id = af."assetId"
-      WHERE af."personId" = $1::uuid
+      WHERE ${personRef} = $1::uuid
         AND af."deletedAt" IS NULL
         AND af."isVisible" IS TRUE
         AND a."deletedAt" IS NULL`,
@@ -172,7 +204,7 @@ async function loadPersonVectorRows(personId) {
     `SELECT
         af.id AS "faceId",
         af."assetId",
-        af."personId",
+        ${personRef} AS "personId",
         af."imageWidth",
         af."imageHeight",
         af."boundingBoxX1",
@@ -187,7 +219,7 @@ async function loadPersonVectorRows(personId) {
        FROM asset_face af
        LEFT JOIN face_search fs ON fs."faceId" = af.id
        JOIN asset a ON a.id = af."assetId"
-      WHERE af."personId" = $1::uuid
+      WHERE ${personRef} = $1::uuid
         AND af."deletedAt" IS NULL
         AND af."isVisible" IS TRUE
         AND a."deletedAt" IS NULL
@@ -236,19 +268,20 @@ async function loadClosestPersonCandidates(personId) {
 async function loadAdjacentPersonCentroids(personIds) {
   const pool = requireVectorDatabase();
   if (!personIds.length) return [];
+  const personRef = await assetFacePersonRef();
   const result = await pool.query(
     `SELECT
-        af."personId",
+        ${personRef} AS "personId",
         count(*)::int AS "faceCount",
         avg(fs.embedding)::text AS embedding
        FROM asset_face af
        JOIN face_search fs ON fs."faceId" = af.id
        JOIN asset a ON a.id = af."assetId"
-      WHERE af."personId" = ANY($1::uuid[])
+      WHERE ${personRef} = ANY($1::uuid[])
         AND af."deletedAt" IS NULL
         AND af."isVisible" IS TRUE
         AND a."deletedAt" IS NULL
-      GROUP BY af."personId"`,
+      GROUP BY ${personRef}`,
     [personIds],
   );
   return result.rows;
@@ -337,10 +370,11 @@ async function validateClusterFaceIds(personId, faceIds) {
   const pool = requireVectorDatabase();
   const unique = [...new Set((faceIds || []).map(String))];
   if (!unique.length) return [];
+  const personRef = await assetFacePersonRef();
   const result = await pool.query(
-    `SELECT id, "assetId"
-       FROM asset_face
-      WHERE "personId" = $1::uuid
+    `SELECT af.id, af."assetId"
+       FROM asset_face af
+      WHERE ${personRef} = $1::uuid
         AND id = ANY($2::uuid[])
         AND "deletedAt" IS NULL
         AND "isVisible" IS TRUE`,
@@ -405,8 +439,9 @@ async function unassignFacesWithTemporaryPerson(items) {
 
     let detachedFaceIds = movedFaceIds;
     if (vectorPool && movedFaceIds.length) {
+      const personRef = await assetFacePersonRef();
       const verify = await vectorPool.query(
-        `SELECT id FROM asset_face WHERE id = ANY($1::uuid[]) AND "personId" IS NULL AND "deletedAt" IS NULL`,
+        `SELECT af.id FROM asset_face af WHERE af.id = ANY($1::uuid[]) AND ${personRef} IS NULL AND af."deletedAt" IS NULL`,
         [movedFaceIds],
       );
       detachedFaceIds = verify.rows.map((row) => row.id);
