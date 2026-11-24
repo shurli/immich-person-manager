@@ -9,6 +9,7 @@ import {
   isClusterListMode,
 } from './cluster-list-mode.js';
 import { comparePeopleKnownFirst } from './person-order.js';
+import { createSplitView } from './split-view.js';
 
 const $ = (s) => document.querySelector(s);
 const PAGE_SIZE = 40;
@@ -422,11 +423,12 @@ function resetReviewState() {
   $('#loadMoreBtn').classList.add('hidden');
 }
 
-async function selectPerson(id) {
+async function selectPerson(id, { view = 'timeline' } = {}) {
   $('#chooser').classList.add('hidden');
   $('#review').classList.remove('hidden');
   resetReviewState();
   resetClusterState();
+  splitView.reset();
   state.timelineStale = false;
   setPersonView('timeline', { load: false });
   $('#timeline').innerHTML = '<div class="panel loading initial-loading">Erste Assets werden geladen…</div>';
@@ -441,6 +443,11 @@ async function selectPerson(id) {
     updatePersonMeta();
     updateBatchButton();
     $('#timeline').innerHTML = '';
+    if (view === 'split') {
+      state.timelineStale = true;
+      setPersonView('split');
+      return;
+    }
     initObservers();
     await loadNextPage();
   } catch (e) {
@@ -799,24 +806,33 @@ function resetClusterState() {
   hideClusterTooltip();
 }
 
+const PERSON_VIEWS = { timeline: ['#timelineViewBtn', '#timelineView'], cluster: ['#clusterViewBtn', '#clusterView'], split: ['#splitViewBtn', '#splitView'] };
+
 function setPersonView(view, { load = true } = {}) {
-  const cluster = view === 'cluster';
-  state.activePersonView = cluster ? 'cluster' : 'timeline';
-  $('#timelineViewBtn').classList.toggle('active', !cluster);
-  $('#timelineViewBtn').setAttribute('aria-selected', String(!cluster));
-  $('#clusterViewBtn').classList.toggle('active', cluster);
-  $('#clusterViewBtn').setAttribute('aria-selected', String(cluster));
-  $('#timelineView').classList.toggle('hidden', cluster);
-  $('#clusterView').classList.toggle('hidden', !cluster);
-  document.querySelector('.review-head .toggle')?.classList.toggle('hidden', cluster);
+  const active = Object.hasOwn(PERSON_VIEWS, view) ? view : 'timeline';
+  state.activePersonView = active;
+  for (const [name, [button, section]] of Object.entries(PERSON_VIEWS)) {
+    $(button).classList.toggle('active', name === active);
+    $(button).setAttribute('aria-selected', String(name === active));
+    $(section).classList.toggle('hidden', name !== active);
+  }
+  document.querySelector('.review-head .toggle')?.classList.toggle('hidden', active !== 'timeline');
   updateBatchButton();
 
-  if (cluster && load) {
+  if (active === 'cluster' && load) {
     loadVectorCluster();
     requestAnimationFrame(drawVectorCluster);
-  } else if (!cluster && state.timelineStale && state.person) {
+  } else if (active === 'split' && load) {
+    splitView.load();
+  } else if (active === 'timeline' && state.timelineStale && state.person) {
     reloadTimelineView();
   }
+}
+
+// Face assignments changed: the timeline and the split view reload when shown next.
+function markPersonDataChanged() {
+  state.timelineStale = true;
+  splitView.invalidate();
 }
 
 async function reloadTimelineView() {
@@ -1768,7 +1784,7 @@ async function mergeClusterNeighborIntoCurrentPerson() {
       method: 'POST',
       body: JSON.stringify({ targetPersonId: target.id }),
     });
-    state.timelineStale = true;
+    markPersonDataChanged();
     state.clusterNeighborRequestToken++;
     state.clusterNeighbors = [];
     state.clusterNeighborLoadedFor = null;
@@ -1834,7 +1850,7 @@ async function detachSelectedClusterFaces() {
       method: 'POST',
       body: JSON.stringify({ faceIds }),
     });
-    state.timelineStale = true;
+    markPersonDataChanged();
     toast(`${result.detached || 0} Zuordnung${result.detached === 1 ? '' : 'en'} gelöst${result.skipped ? ` · ${result.skipped} übersprungen` : ''}${result.failed ? ` · ${result.failed} Fehler` : ''}`);
     await loadVectorCluster({ force: true });
   } catch (error) {
@@ -2003,6 +2019,7 @@ $('#createPersonBtn').onclick = async () => {
 
 $('#timelineViewBtn').onclick = () => setPersonView('timeline');
 $('#clusterViewBtn').onclick = () => setPersonView('cluster');
+$('#splitViewBtn').onclick = () => setPersonView('split');
 $('#clusterReloadBtn').onclick = () => loadVectorCluster({ force: true });
 $('#clusterRadiusRange').addEventListener('input', (event) => setClusterRadius(event.target.value, { renderCards: false }));
 $('#clusterRadiusInput').addEventListener('change', (event) => setClusterRadius(event.target.value));
@@ -2059,6 +2076,7 @@ $('#closeDialog').onclick = () => $('#reassignDialog').close();
 $('#backBtn').onclick = () => {
   resetReviewState();
   resetClusterState();
+  splitView.reset();
   clusterResizeObserver?.disconnect();
   $('#review').classList.add('hidden');
   $('#chooser').classList.remove('hidden');
@@ -2066,5 +2084,30 @@ $('#backBtn').onclick = () => {
 };
 $('#hideReviewed').onchange = (e) => state.reviewed.forEach((id) => document.querySelector(`[data-asset="${id}"]`)?.classList.toggle('hidden', e.target.checked));
 
+const splitView = createSplitView({
+  $,
+  api,
+  toast,
+  esc,
+  thumbAsset,
+  thumbPerson,
+  cropRect,
+  immichAssetUrl,
+  hasImmichUrl: () => Boolean(state.immichUrl),
+  getPerson: () => state.person,
+  onChanged: () => {
+    markPersonDataChanged();
+    state.clusterLoadedFor = null;
+  },
+  onPersonRenamed: (updated) => {
+    if (!state.person || updated?.id !== state.person.id) return;
+    state.person = { ...state.person, ...updated };
+    $('#selectedPersonName').textContent = state.person.name || 'Unbenannt';
+    const listed = state.people.find((p) => p.id === updated.id);
+    if (listed) Object.assign(listed, { name: updated.name, isHidden: updated.isHidden });
+    updatePersonMeta();
+  },
+  openPersonSplit: (id) => selectPerson(id, { view: 'split' }),
+});
 
 init();

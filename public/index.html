@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>immich-person-manager</title>
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/split-view.css" />
 </head>
 <body>
   <header class="topbar">
@@ -26,8 +27,19 @@
       <div id="unnamedChooser" class="hidden">
         <div class="unnamed-head">
           <div><h1>Unbenannte Personen</h1><p>Unbenannte, sichtbare Personen aus Immich. Kennzahlen werden beim Scrollen nachgeladen.</p></div>
-          <div class="unnamed-tools"><div id="unnamedCount" class="muted"></div><button id="refreshUnnamedThumbsBtn" class="btn ghost" type="button">Beste Thumbnails setzen</button><button id="duplicateFacesBatchBtn" class="btn remove" type="button">Doppelte Face-Boxen bereinigen</button></div>
+          <div class="unnamed-tools"><div id="unnamedCount" class="muted"></div><button id="suspiciousBtn" class="btn ghost" type="button">Verdächtige Gruppen</button><button id="refreshUnnamedThumbsBtn" class="btn ghost" type="button">Beste Thumbnails setzen</button><button id="duplicateFacesBatchBtn" class="btn remove" type="button">Doppelte Face-Boxen bereinigen</button></div>
         </div>
+        <section id="suspiciousPanel" class="suspicious-panel hidden" aria-labelledby="suspiciousTitle">
+          <div class="suspicious-head">
+            <div>
+              <h2 id="suspiciousTitle">Verdächtige Gruppen</h2>
+              <p class="muted">Gemischte Gruppen finden: Für eine Stichprobe von Gesichtern je Gruppe stimmen die 10 ähnlichsten benannten Gesichter ab. „zuordenbar“ = Anteil mit sicherem oder wahrscheinlichem Vorschlag für eine benannte Person, „uneinig“ = Anteil, der eine andere als die Mehrheitsperson nennt. Hoch zuordenbar und kaum uneinig: die ganze Gruppe ist wohl eine benannte Person, also eher zusammenführen. Hoch uneinig: gemischte Gruppe, aufteilen. Eine Zeile öffnet „Gruppe aufteilen“.</p>
+            </div>
+            <button id="suspiciousScanBtn" class="btn ghost" type="button">Neu scannen</button>
+          </div>
+          <div id="suspiciousStatus" class="muted"></div>
+          <div class="suspicious-table-wrap"><table id="suspiciousTable" class="suspicious-table"></table></div>
+        </section>
         <div id="unnamedPeople" class="unnamed-grid"></div>
       </div>
 
@@ -48,6 +60,7 @@
       <div class="person-view-tabs panel" role="tablist" aria-label="Personenansicht">
         <button id="timelineViewBtn" class="person-view-tab active" type="button" role="tab" aria-selected="true">Chronologisch prüfen</button>
         <button id="clusterViewBtn" class="person-view-tab" type="button" role="tab" aria-selected="false">Vektor-Cluster <span id="clusterDbBadge" class="mini-badge">DB</span></button>
+        <button id="splitViewBtn" class="person-view-tab" type="button" role="tab" aria-selected="false">Gruppe aufteilen</button>
       </div>
 
       <section id="timelineView">
@@ -188,6 +201,28 @@
               <button id="clusterExportBtn" class="cluster-button subtle" type="button">Cluster als JSON exportieren</button>
             </div>
           </details>
+        </div>
+      </section>
+
+      <section id="splitView" class="split-shell hidden" aria-labelledby="splitTitle">
+        <div class="split-head panel">
+          <div class="split-head-text">
+            <h2 id="splitTitle">Gruppe aufteilen</h2>
+            <p id="splitSummary" class="muted"></p>
+          </div>
+          <div class="split-head-actions">
+            <button id="splitUndoBtn" class="btn detach hidden" type="button">Rückgängig</button>
+            <button id="splitReloadBtn" class="btn ghost" type="button">Neu berechnen</button>
+            <button id="splitCatchAllBtn" class="btn hide-person" type="button">Rest als ausgeblendete Sammelgruppe…</button>
+          </div>
+        </div>
+        <p class="split-help">Für jedes Gesicht stimmen die 10 ähnlichsten Gesichter benannter Personen ab; Personen, die nach dem Foto geboren sind, zählen nicht. <b>sicher</b>: mindestens 7 Stimmen, Abstand unter 0,45 · <b>wahrscheinlich</b>: mindestens 5, unter 0,50. <b>Grün umrandet = wird der Person darunter zugeordnet.</b> Bei „sicher“ ist alles vorgewählt, außer Gesichtern mit ⚠ (knapp an der Grenze oder Widerspruch zu eng verwandten Gesichtern dieser Gruppe), sonst nichts. Bild anklicken schaltet um; im Auswahlfeld eine andere Person wählen (Anfangsbuchstabe tippen springt zum zuletzt gewählten Namen mit diesem Buchstaben); danach setzt „↓ … auch für die nächsten“ denselben Namen für alle folgenden Gesichter des Blocks. Für jemanden ohne Namen: „＋ Neue Person…“ (Name oder leer) oder „✕ Zuordnung lösen“. Nicht gewählte Gesichter bleiben in dieser Gruppe; bei einer benannten Person heißt das: sie bleiben ihr zugeordnet.</p>
+        <div id="splitWarnings" class="split-warnings hidden"></div>
+        <div id="splitMessage" class="panel split-message hidden"></div>
+        <div id="splitBlocks"></div>
+        <div id="splitActions" class="split-actions panel hidden">
+          <button id="splitApplyBtn" class="btn" type="button" disabled>Zuordnen (0)</button>
+          <span id="splitSelectionInfo" class="muted"></span>
         </div>
       </section>
     </section>

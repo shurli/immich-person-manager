@@ -73,6 +73,40 @@ Die App schreibt **nicht direkt** in die Immich-Datenbank. Änderungen an Person
   - umschaltbarer Asset-Galerie für Faces außerhalb, innerhalb oder unabhängig vom Radius,
   - Mehrfachauswahl und Lösen der Zuordnung,
   - JSON-Export einschließlich aktuellem Mittelpunkt und neu berechneten Abständen.
+- gemischte Gruppen Gesicht für Gesicht aufteilen („Gruppe aufteilen“, siehe unten)
+- verdächtige unbenannte Gruppen finden („Verdächtige Gruppen“)
+
+### Gruppe aufteilen
+
+Immich fasst manchmal Gesichter verschiedener Menschen zu einer Person zusammen, etwa ähnlich aussehende Verwandte,
+Profilansichten oder viele kleine, abgewandte Gesichter. Die Ansicht **Gruppe aufteilen** schlägt deshalb für jedes
+Gesicht einzeln eine Person vor:
+
+- Für jedes Gesicht stimmen die 10 ähnlichsten Gesichter **benannter** Personen desselben Kontos ab (Vektorindex; das
+  Gesicht selbst zählt nicht). Personen, die nach dem Foto geboren sind, zählen nicht.
+- Stufen: **sicher** (mindestens 7 Stimmen, mittlerer Abstand unter 0,45), **wahrscheinlich** (mindestens 5, unter
+  0,50), **unklar**. Vorgewählt ist nur „sicher“, außer bei einer Warnung: **knapp** (höchstens 0,01 unter der
+  Grenze) oder **Widerspruch** (Gesichter, die über Abstände unter 0,35 zusammenhängen, bekommen verschiedene Personen
+  vorgeschlagen; typisch, wenn die richtige Person kaum benannte Gesichter dieser Art hat).
+- Blöcke „Vorschlag · Stufe“ mit „alle wählen / keine“, Gesichtsausschnitt und „ganzes Bild ↗“. Im Auswahlfeld je
+  Gesicht springt ein Anfangsbuchstabe zum zuletzt gewählten Namen; „↓ … auch für die nächsten n“ übernimmt die Wahl
+  für den Rest des Blocks; außerdem „＋ Neue Person…“ (mit Namen oder unbenannt) und „✕ Zuordnung lösen“.
+- **Zuordnen** läuft über die Immich-API. Jede Änderung landet in einem JSON-Lines-Log (`SPLIT_LOG_PATH`), und
+  **Rückgängig** setzt den letzten Durchgang zurück; Gesichter, die seitdem anders zugeordnet wurden, bleiben.
+  Ohne beschreibbares Log wird nichts geändert. Das Log enthält je Zuordnung Zeit, Face, alte und neue Person, aber
+  keine Embeddings. Gesichter, die inzwischen nicht mehr in der Gruppe sind, werden übersprungen; es läuft immer nur
+  ein Durchgang gleichzeitig.
+- **Rest als ausgeblendete Sammelgruppe** benennt die Gruppe um und blendet sie aus, damit ähnliche unklare Gesichter
+  nicht in echte Personen wandern.
+- **Verdächtige Gruppen** (Tab „Unbenannte Personen“): Hintergrund-Scan der unbenannten Gruppen ab 6 Gesichtern mit
+  einer Stichprobe von 30 Gesichtern je Gruppe; sortierbar nach Zeitraum, mittlerer Gesichtsbreite, Anteil
+  zuordenbarer und uneiniger Gesichter. Hoch zuordenbar und kaum uneinig heißt meist „zusammenführen“, hoch uneinig
+  „aufteilen“.
+- Geteilte Personen können Gesichter mehrerer Immich-Konten enthalten. Berücksichtigt werden nur Gesichter des Kontos,
+  dem der API-Key gehört (ermittelt über `asset.read`); die übrigen sind mit dem Key weder sichtbar noch zuordenbar
+  und werden mit ihrer Anzahl ausgeblendet.
+- Keine zusätzlichen Rechte: weiterhin nur `SELECT` auf `asset`, `asset_face` und `face_search`.
+- Etwa 10 ms je Gesicht; eine Gruppe mit 1.500 Gesichtern braucht rund 8 Sekunden.
 
 ## Konfiguration
 
@@ -223,8 +257,12 @@ docker run -d \
   --network immich_default \
   --env-file .env \
   -p 3003:3003 \
+  -v immich-person-manager-data:/data \
   ghcr.io/shurli/immich-person-manager:latest
 ```
+
+Das Volume `/data` enthält das Rückgängig-Log von „Gruppe aufteilen“; ohne Volume geht es beim Neuerstellen des
+Containers verloren. Compose legt dafür das benannte Volume `person-manager-data` an.
 
 Bei einem anderen `PORT` muessen beide Seiten von `-p` denselben Wert
 verwenden, z. B. `-p 3103:3103` fuer `PORT=3103`. `IMAGE_TAG` und
@@ -311,6 +349,8 @@ Je nach verwendeter Funktion:
 - `face.update`
 - `face.delete`
 
+„Gruppe aufteilen“ braucht keine weiteren Rechte; über `asset.read` stellt es fest, zu welchem Konto der API-Key gehört.
+
 Für das Lösen einer Zuordnung wird das Face kurz einer versteckten temporären Person zugewiesen. Danach wird diese Person gelöscht. Dadurch bleibt die Face-Markierung erhalten, während ihre Personenzuordnung leer wird.
 
 ## Konfigurationsvariablen
@@ -335,6 +375,8 @@ Für das Lösen einer Zuordnung wird das Face kurz einer versteckten temporären
 | `VECTOR_CLUSTER_MAX_FACES` | Sicherheitslimit je Person | `30000` |
 | `VECTOR_CLUSTER_MAX_ADJACENT_PEOPLE` | maximal auswählbare Anzahl angrenzender Personen | `50` |
 | `VECTOR_CLUSTER_ADJACENT_CANDIDATE_POOL` | Größe der von Immich vorselektierten Kandidatenmenge | `500` |
+| `VECTOR_SPLIT_MAX_FACES` | Sicherheitslimit je Gruppe für „Gruppe aufteilen“ (ca. 10 ms je Gesicht) | `3000` |
+| `SPLIT_LOG_PATH` | JSON-Lines-Log der Zuordnungen für „Rückgängig“; im Image als Volume `/data` vorgesehen | Image: `/data/split-log.jsonl`, lokal `./data/split-log.jsonl` |
 
 Die bisherigen `DB_HOSTNAME`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` und
 `DB_DATABASE_NAME` bleiben als Fallbacks erhalten. Explizite `IMMICH_DB_*`
@@ -363,6 +405,10 @@ npm test
 npm run check
 # Mit installiertem Docker Compose:
 npm run check:compose
+# Integrationstest von „Gruppe aufteilen“ gegen ein Wegwerf-PostgreSQL mit pgvector/VectorChord:
+docker run -d --name ipm-split-testdb -e POSTGRES_PASSWORD=test -e POSTGRES_DB=immich \
+  -p 127.0.0.1:55432:5432 ghcr.io/immich-app/postgres:18-vectorchord0.5.3-pgvector0.8.1
+SPLIT_TEST_DB_URL=postgres://postgres:test@127.0.0.1:55432/immich node --test split-routes.test.mjs
 # Die Node-App liest .env nicht selbst ein:
 set -a
 . ./.env

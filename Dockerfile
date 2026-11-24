@@ -5,9 +5,12 @@ LABEL org.opencontainers.image.title="immich-person-manager" \
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund --ignore-scripts
-COPY --chown=node:node server.mjs cluster-math.mjs asset-face-schema.mjs ./
+COPY --chown=node:node server.mjs cluster-math.mjs asset-face-schema.mjs split-vote.mjs ./
 COPY --chown=node:node public ./public
 ENV NODE_ENV=production PORT=3003
+# undo log of the split view; mount a volume here to keep it across container updates
+RUN mkdir -p /data && chown node:node /data
+ENV SPLIT_LOG_PATH=/data/split-log.jsonl
 USER node
 EXPOSE 3003
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
