@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test",
-    "check": "node --check server.mjs && node --check public/app.js && node --check asset-face-schema.mjs",
+    "check": "node --check server.mjs && node --check public/app.js && node --check asset-face-schema.mjs && node --check split-vote.mjs",
     "check:compose": "node scripts/check-compose.mjs"
   },
   "dependencies": {

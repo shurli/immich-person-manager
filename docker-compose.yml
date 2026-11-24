@@ -7,6 +7,9 @@ services:
       - "${PORT:-3003}:${PORT:-3003}"
     networks:
       - immich
+    volumes:
+      # undo log of "Gruppe aufteilen" (SPLIT_LOG_PATH); a named volume keeps it across updates
+      - person-manager-data:/data
     environment:
       PORT: "${PORT:-3003}"
       IMMICH_URL: "${IMMICH_URL:-http://immich_server:2283}"
@@ -33,3 +36,6 @@ networks:
   immich:
     external: true
     name: "${IMMICH_NETWORK:-immich_default}"
+
+volumes:
+  person-manager-data:

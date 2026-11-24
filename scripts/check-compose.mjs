@@ -32,6 +32,8 @@ assert.equal(service(defaults).environment.IMMICH_DB_HOST, '');
 assert.equal(service(defaults).environment.IMMICH_DB_USER, 'immich_person_manager');
 assert.equal(defaults.networks.immich.external, true);
 assert.equal(defaults.networks.immich.name, 'immich_default');
+assert.deepEqual(service(defaults).volumes.map((v) => [v.type, v.source, v.target]), [['volume', 'person-manager-data', '/data']]);
+assert.ok(defaults.volumes['person-manager-data']);
 checkPort(render({ PORT: '' }), 3003);
 const custom = render({ PORT: '43123', IMAGE_TAG: '0.14.0', IMMICH_NETWORK: 'photos', IMMICH_URL: 'http://custom:2283', IMMICH_API_PREFIX: '', VECTOR_CLUSTER_MAX_FACES: '12000' });
 checkPort(custom, 43123);

@@ -9,3 +9,5 @@ storage
 *.test.mjs
 README.md
 MIGRATION.md
+fixtures
+data
