@@ -59,6 +59,13 @@ test('person HTTP routes remain usable and former tag API is removed', async (t)
   const reassign = await fetch(base + `/review-api/faces/${id}/reassign`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ personId: id }) });
   assert.equal(reassign.status, 200);
   for (const method of ['GET', 'PUT']) assert.equal((await fetch(base + '/review-api/tags', { method })).status, 404);
+  // a write that a browser marks as cross-site (e.g. a form on another page) is refused before reaching Immich
+  const before = seen.length;
+  const crossSite = await fetch(base + `/review-api/faces/${id}/reassign`, { method: 'PUT', headers: { 'content-type': 'application/json', 'sec-fetch-site': 'cross-site' }, body: JSON.stringify({ personId: id }) });
+  assert.equal(crossSite.status, 403);
+  assert.equal(seen.length, before);
+  const sameOrigin = await fetch(base + `/review-api/faces/${id}/reassign`, { method: 'PUT', headers: { 'content-type': 'application/json', 'sec-fetch-site': 'same-origin' }, body: JSON.stringify({ personId: id }) });
+  assert.equal(sameOrigin.status, 200);
   assert.equal((await fetch(base + '/review-api/tags/test/calibration-preview', { method: 'POST' })).status, 404);
   assert.ok(seen.every((request) => request.key === 'test-secret'));
   assert.ok(seen.some((request) => request.url === '/api/faces/' + id && request.method === 'PUT'));

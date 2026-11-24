@@ -353,6 +353,10 @@ Browser
 
 API-Key und Datenbankpasswort werden nicht an den Browser ausgegeben. Einzelne vollständige Face-Embeddings werden ebenfalls nicht gesendet. Für das Verschieben des Zentrums erhält der Browser pro Face nur drei skalare Projektionswerte sowie die für die Darstellung benötigten Metadaten.
 
+Die App hat keinen Login. Schreibende Anfragen werden deshalb abgewiesen, wenn der Browser sie als seitenfremd
+kennzeichnet (`Sec-Fetch-Site`); so kann eine andere Webseite im selben Netz keine Zuordnungen ändern oder Faces
+löschen.
+
 Auch bei Nachbarpersonen erhält der Browser nicht deren vollständigen Durchschnittsvektor, sondern nur Distanz und drei skalare Projektionen in die Basis des aktuell geöffneten Clusters. Die bestehenden Read-only-Rechte auf `asset`, `asset_face` und `face_search` reichen weiterhin aus; ein zusätzliches `SELECT` auf `person` ist nicht erforderlich.
 
 ## Entwicklung und Tests
