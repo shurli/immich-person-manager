@@ -187,3 +187,8 @@
 .cluster-neighbor-dialog-actions{margin-top:16px;justify-content:flex-end;flex-wrap:wrap}
 @media(max-width:700px){.cluster-neighbor-title-row{align-items:flex-start;flex-direction:column}.cluster-neighbor-count-row{grid-template-columns:1fr}.cluster-neighbor-count-row .cluster-radius-number{width:100%!important}.cluster-neighbor-dialog-person{grid-template-columns:72px minmax(0,1fr)}.cluster-neighbor-dialog-person img{width:72px;height:72px}.cluster-neighbor-dialog-actions .btn{width:100%}}
 
+/* local fix 2026-11-23: the neighbour dialog used light text (meant for the dark cluster panel) on the white dialog */
+.cluster-neighbor-dialog-person h3{color:#1f2937}
+.cluster-neighbor-dialog .muted{color:#4b5563}
+.cluster-neighbor-merge-copy{color:#374151;background:#f5f3ff;border-color:#ddd6fe}
+.cluster-neighbor-merge-copy strong{color:#4c1d95}

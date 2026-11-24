@@ -718,8 +718,19 @@ async function streamImmich(res, response, cache = true) {
   res.end();
 }
 
+// Requests that change something must come from this app's own page. The app has no login; without this check any
+// page opened in the same network could, for example, submit a form that reassigns or deletes faces.
+function rejectCrossSiteWrite(req) {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return null;
+  const site = String(req.headers['sec-fetch-site'] || '');
+  if (site && site !== 'same-origin' && site !== 'none') return { status: 403, message: 'Schreibende Anfragen von fremden Seiten sind nicht erlaubt.' };
+  return null;
+}
+
 async function handleApi(req, res, url) {
   try {
+    const crossSite = rejectCrossSiteWrite(req);
+    if (crossSite) return json(res, crossSite.status, { message: crossSite.message });
     if (req.method === 'GET' && url.pathname === '/review-api/status') {
       const r = await immichFetch('/api-keys/me');
       if (!r.ok) return proxyJson(res, r);
